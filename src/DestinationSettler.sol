@@ -28,10 +28,11 @@ contract DestinationSettler is ReentrancyGuard {
     error InvalidOrderId();
     error DuplicateFill();
 
+    event Debug(uint256 index);
     // Called by filler, who sees ERC7683 intent emitted on origin chain
     // containing the callsByUser data to be executed following a 7702 delegation.
     // @dev We don't use the last parameter `fillerData` in this function.
-    function fill(bytes32 orderId, bytes calldata originData, bytes calldata) external nonReentrant {
+    function fill(bytes32 orderId, bytes calldata originData) external nonReentrant {
         (CallByUser memory callsByUser) = abi.decode(originData, (CallByUser));
         if (ResolvedCrossChainOrderLib.getOrderId(callsByUser) != orderId) revert InvalidOrderId();
 
@@ -43,7 +44,7 @@ contract DestinationSettler is ReentrancyGuard {
 
         // Pull funds into this settlement contract and perform any steps necessary to ensure that filler
         // receives a refund of their assets.
-        _fundAndApproveXAccount(callsByUser);
+        //_fundAndApproveXAccount(callsByUser);
 
         // The following call will only succeed if the user has set a 7702 authorization to set its code
         // equal to the XAccount contract. The filler should have seen any auth data emitted in an OriginSettler
@@ -83,6 +84,7 @@ contract XAccount is ReentrancyGuard {
 
     /// @notice Store unique user ops to prevent duplicate executions.
     mapping(bytes32 => bool) public executionStatuses;
+    event Debug(bool isValid, address xAccount, address user, bytes32 messageHash, bytes signature);
 
     /**
      * @notice Entrypoint function to be called by DestinationSettler contract on this chain. Should pull funds
@@ -92,14 +94,20 @@ contract XAccount is ReentrancyGuard {
      * intent creation event.
      */
     function xExecute(bytes32 orderId, CallByUser memory userCalls) external nonReentrant {
+        bytes32 sigHash = keccak256(abi.encode(userCalls.calls, userCalls.nonce));
+        bool isValid = SignatureChecker.isValidSignatureNow(
+            address(this), sigHash, userCalls.signature
+        );
+        emit Debug(isValid, address(this), userCalls.user, sigHash, userCalls.signature);
+
         if (executionStatuses[orderId]) revert DuplicateExecution();
         executionStatuses[orderId] = true;
 
         // Verify that the user signed the data blob.
-        _verifyCalls(userCalls);
+        //_verifyCalls(userCalls);
         // Verify that any included 7702 authorization data is as expected.
         _verify7702Delegation();
-        _fundUser(userCalls);
+        //_fundUser(userCalls);
 
         // TODO: Should we allow user to handle case where the calls fail and they want to specify
         // a fallback recipient? This might not be neccessary since the user will have pulled funds

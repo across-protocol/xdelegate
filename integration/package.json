@@ -1,0 +1,17 @@
+{
+  "name": "xdelegate integration test",
+  "version": "1.0.0",
+  "description": "Integration tests for EIP-7702 and ERC-7683.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@noble/curves": "^1.7.0",
+    "dotenv": "^16.4.7",
+    "viem": "^2.21.55"
+  }
+}
